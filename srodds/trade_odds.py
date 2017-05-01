@@ -29,7 +29,8 @@ odds = {amt: occurrences_of_totals[amt] * 1.0 / occurrences
 #  9: 0.003996003996003996}
 
 
-########### Calculate once at start of program ################################
+###############################################################################
+# This only needs to be calculated once at the start of the program
 card_trade_values_by_total = {}
 
 card_trade_values = [0, 1, 2, 3, 4]
@@ -82,6 +83,7 @@ def get_k_val_lookup(deck):
     return k_val_odds
 
 
+# Return the odds of a single 5-card hand yielding possible trade totals.
 def get_trade_odds(deck):
     k_val_lookup = get_k_val_lookup(deck)
 
@@ -113,3 +115,10 @@ def get_trade_odds(deck):
 ######################
 def with_n_explorers(n):
     return start_deck + [explorer] * n
+
+def percentage(deck):
+    return {k: round(100 * v, 2) for k, v in get_trade_odds(deck).items()}
+
+
+k_deck = [{'trade': n} for n in [0, 1, 0, 1, 0, 1, 0, 1, 1, 3, 1, 0, 1, 3, 3, 3, 1]]
+w_deck = [{'trade': n} for n in [2, 2, 2, 3, 4, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]]

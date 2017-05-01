@@ -1,5 +1,6 @@
 import numpy
 from scipy.stats import hypergeom
+from itertools import product
 
 dist_all = hypergeom(12, 3, 5)
 
@@ -64,8 +65,64 @@ def hands_this_cycle_odds_target_drawn_and_faction_triggered(D, F):
         # return odds of making it this hand
         # append:
         # sum of odds of not making and drawing Fthis * hands_this_cycle(D, F-Fthis) from 0 tto F
+    return
 
 
+# if __name__ == '__main__':
+#     def next_hand_odds_target_not_drawn_k_allies_not_drawn(D, F, k):
+#         pass
+#     pass
 
-def next_hand_odds_target_not_drawn_k_allies_not_drawn(D, F, k):
-    pass
+
+###############################################################################
+# Odds of triggering f ally abilities in a deck with F cards of a faction
+# Return the odds of triggering numbers of faction abilities across FULL hands.
+# (This excludes bottom-decked cards.)
+def ally_ability_odds(deck, number_in_faction):
+    # Get the various distributions of faction cards across 5-card hands.
+    # Account for the bottom-deck by excluding distributions whose f-count
+    # exceeds the expected size of the bottom deck, then exclude the
+    # bottom-deck itself from the final counts.
+    number_of_full_hands = len(deck) / 5
+    bottom_hand_size = len(deck) % 5
+    faction_distributions = [dist[:-1] for dist
+                             in product(range(0, 6), repeat=number_of_full_hands+1)
+                             if sum(dist) == number_in_faction and dist[-1] <= bottom_hand_size]
+
+    # Determine the odds of each faction distribution. Fairly straightforward:
+    # Starting at 1, keep multiplying the odds so far by the odds of drawing
+    # the next count, given the changing hypergeometric distributions.
+    faction_distribution_odds = {}
+    for f_dist in faction_distributions:
+        odds = 1
+        number_of_previous_hands = 0
+        number_of_previous_faction_cards = 0
+        for f in f_dist:
+            odds *= hypergeom(
+                len(deck) - number_of_previous_hands * 5,
+                number_in_faction - number_of_previous_faction_cards,
+                5).pmf(f)
+            number_of_previous_hands += 1
+            number_of_previous_faction_cards += f
+        faction_distribution_odds[f_dist] = odds
+
+    # Determine total abilities triggered by each faction distribution.
+    # Sum the probabilities of each possible total.
+    abilities_triggered_by_faction_count = {
+        0: 0,
+        1: 0,
+        2: 2,
+        3: 3,
+        4: 4,
+        5: 5
+    }
+    result = {}
+    for f_dist, prob in faction_distribution_odds.items():
+        number_of_abilities_triggered = sum(
+            [abilities_triggered_by_faction_count[f]
+             for f in f_dist])
+        try:
+            result[number_of_abilities_triggered] += prob
+        except KeyError:
+            result[number_of_abilities_triggered] = prob
+    return result
