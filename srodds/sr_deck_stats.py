@@ -89,11 +89,11 @@ class StarRealmsDeckStats(object):
         self.N = len(deck)
 
     def attribute_vector(self, attribute):
-        return [card[attribute] for card in self.deck]
+        return [card.get(attribute, 0) for card in self.deck]
 
     def attribute_value_count(self, attribute, value):
         return len([card for card in self.deck
-                    if card[attribute] == value])
+                    if card.get(attribute, 0) == value])
 
     def ally_abilities_triggered(self, faction):
         return GeneralStarRealmsDeckStats.ally_abilities_triggered(
@@ -133,9 +133,97 @@ class StarRealmsHandStats(StarRealmsDeckStats):
                 # does not prematurely terminate.
                 else:
                     numerator = reduce(lambda x, y: x * y, numerator_factors, 1)
-                    denominator = comb(len(deck), 5) * 1.0
+                    denominator = comb(self.N, 5) * 1.0
                     odds_of_value_count = numerator / denominator
                     odds_of_trade_total += odds_of_value_count
             if odds_of_trade_total != 0:
                 odds_of_trade_totals[trade_total] = odds_of_trade_total
         return odds_of_trade_totals
+
+    def f(self):
+        # Odds of getting some number of draw cards,
+        # times the odds that the final card is not a draw card.
+
+        # Consider the first n-1 cards as the "hand",
+        # and the final card as the first card in the rest of the deck.
+        draws = self.attribute_vector('draw')
+
+        cards_in_deck = self.N
+        draws_in_deck = sum(draws)
+        return {
+            cards_in_hand: (
+                [cards_in_deck, draws_in_deck, cards_in_hand - 1, cards_in_hand - 5],
+                hypergeom(
+                    cards_in_deck,
+                    draws_in_deck,
+                    cards_in_hand - 1)
+                .pmf(cards_in_hand - 5),
+                [cards_in_deck - cards_in_hand + 1,
+                 cards_in_deck - draws_in_deck - 4,
+                 1,
+                 1],
+                hypergeom(
+                    cards_in_deck - cards_in_hand + 1,
+                    cards_in_deck - draws_in_deck - 4,
+                    1)
+                .pmf(1)
+            )
+            for cards_in_hand in range(5, 5 + draws_in_deck + 1)}
+
+    def g(self):
+        # Odds of getting some number of draw cards,
+        # times the odds that the final card is not a draw card.
+
+        # Consider all the cards in the hand as the first group,
+        # and the last card of the hand as the second group
+        draws = self.attribute_vector('draw')
+
+        cards_in_deck = self.N
+        draws_in_deck = sum(draws)
+        return {
+            cards_in_hand: (
+                [cards_in_deck, draws_in_deck, cards_in_hand, cards_in_hand - 5],
+                hypergeom(
+                    cards_in_deck,
+                    draws_in_deck,
+                    cards_in_hand)
+                .pmf(cards_in_hand - 5),
+                [cards_in_hand, 5, 1, 1],
+                hypergeom(cards_in_hand, 5, 1)
+                .pmf(1)
+            )
+            for cards_in_hand in range(5, 5 + draws_in_deck + 1)}
+
+    def calc(self, result):
+        return {s: result[s][1] * result[s][3] for s in result}
+
+    def size_odds(self):
+        draws = self.attribute_vector('draw')
+
+        possible_sizes = range(5, 5 + sum(draws) + 1)
+
+        def f(draws, hits, hits_left):
+            if hits_left == 0:
+                pass
+
+            hypergeom(self.N, sum(draws), 5).pmf(size - 5)
+
+        # odds that the bonus draws become bonus draws...
+        # drew: 5
+        # draw: 2
+
+        def odds_of_bonus_draws(pool, draws, hits):
+            return {d: hypergeom(pool, hits, draws).pmf(d)
+                    for d in range(max(0, hits + draws - pool), min(hits, draws) + 1)}
+
+        # odds of any particular number need to be multipied by the odds that its extra draws do not yield further additional draws
+        # odds of any particular number need to be adjust upward by adding the odds of lower ones yielding it via additional draws
+
+
+
+
+        # use sum(draws) for now. works for representing all primary draw 1s.
+        # does NOT represent command ship's draw 2
+        # does NOT represent ally draws
+        return {size: hypergeom(self.N, sum(draws), 5).pmf(size - 5)
+                for size in possible_sizes}
