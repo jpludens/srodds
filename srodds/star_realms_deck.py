@@ -10,9 +10,17 @@ class StarRealmsDeck(object):
     def make_empty_deck():
         return StarRealmsDeck([])
 
+    @staticmethod
+    def make_dummy_deck(attribute, values):
+        return StarRealmsDeck([{attribute: value} for value in values])
+
     def __init__(self, cardlist):
         self.cardlist = cardlist
+
         self.deck = list(cardlist)
+        self.hand = []
+        self.played = []
+        self.discard = []
 
     def copy_with(self, cards):
         return StarRealmsDeck(self.cardlist + cards)
