@@ -3,6 +3,7 @@ from itertools import product
 
 from scipy.special import comb
 from scipy.stats import hypergeom
+from scipy import nan
 
 from srodds.analyzers.deck_analyzer import StarRealmsDeckStats
 from srodds.cards import Abilities, Attributes, Factions
@@ -12,7 +13,8 @@ class StarRealmsHandStats(StarRealmsDeckStats):
     """Provides probabilities of events occurring in a deck's next hand."""
 
     @staticmethod
-    def get_size_odds(cardlist):
+    def get_size_odds(cardlist, starting_draws=5, discard=None):
+        discard = discard or []
         # TODO Account for ally draws
         # TODO Account for multiple draws (Mothership, Command Ship)
         # Odds of getting some number of draw cards,
@@ -21,16 +23,29 @@ class StarRealmsHandStats(StarRealmsDeckStats):
         # Consider all the cards in the hand as the first group,
         # and the last card of the hand as the second group
         draws = [card.get(Abilities.DRAW, 0) for card in cardlist]
-
-        # cards_in_deck = self.N
         draws_in_deck = sum(draws)
-        return {
-            cards_in_hand:
-                # Odds of this number of cards such that exactly 5 do not add draws
-                hypergeom(len(cardlist), draws_in_deck, cards_in_hand).pmf(cards_in_hand - 5)
-                # Odds that the very last card does not add more draws
-                * hypergeom(cards_in_hand, 5, 1).pmf(1)
-            for cards_in_hand in range(5, 5 + draws_in_deck + 1)}
+        max_draws = starting_draws + draws_in_deck
+
+        # Compute the intermediate result of the odds of each hand size without pivot
+        result = {}
+        for cards_in_hand in range(starting_draws,
+                                   min(max_draws, len(cardlist)) + 1):
+            result[cards_in_hand] =\
+                hypergeom(len(cardlist),
+                          draws_in_deck,
+                          cards_in_hand).pmf(
+                    cards_in_hand - starting_draws) *\
+                hypergeom(cards_in_hand, starting_draws, 1).pmf(1)
+
+        # If a pivot is possible, amend the result with odds of pivot tail sizes
+        odds_of_halting = 1 - sum(v for v in result.values() if v != nan)
+        if max_draws > len(cardlist) and discard:
+            num_tail_draws = max_draws - len(cardlist)
+            pivot_tail = StarRealmsHandStats.get_size_odds(discard, num_tail_draws)
+            for k, v in pivot_tail.items():
+                result[(len(cardlist), k)] = v * odds_of_halting
+        # TODO result is a mixture of int and tuple<int, int> keys. gross...
+        return result
 
     @staticmethod
     def get_ability_odds(ability, cardlist):

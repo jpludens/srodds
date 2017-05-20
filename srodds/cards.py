@@ -34,6 +34,7 @@ class Abilities(Enum):
     TRADE = 1
     COMBAT = 2
     DRAW = 3
+    CHOICE = 4
 
 
 scout = {
@@ -69,6 +70,15 @@ federation_shuttle = {
     Attributes.NAME: 'Federation Shuttle',
     Attributes.FACTION: Factions.TRADE_FEDERATION,
     Abilities.TRADE: 2
+}
+
+patrol_mech = {
+    Attributes.NAME: 'Patrol Mech',
+    Attributes.FACTION: Factions.MACHINE_CULT,
+    Abilities.CHOICE: [
+        {Abilities.TRADE: 3},
+        {Abilities.COMBAT: 5}
+    ]
 }
 
 # I need a draw 1 for tinkering purposes. The rest of these sound fun.
